@@ -388,7 +388,7 @@ var csv='﻿'+rows.map(function(r){return r.map(function(c){return '"'+String(c)
 var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
 a.download='pruefungswache-'+T.room+'.csv';document.body.appendChild(a);a.click();a.remove();
 }
-var CODE_HASH='b534d8d15a4e96273cb663a3ec8d6742b99bb283ba3619e6b2e8d8a01cd6568b',OK='pw-teacher-ok';
+var CODE_HASH='fa5e132f77595ff999f7fd9830eb8645daa5123460bb4cc81d4b5b336b8034c1',OK='pw-teacher-ok';
 function enter(){if(T&&T.room)dashView();else setupView();}
 function gate(msg){
 app.innerHTML='<div class="center"><form class="card" id="g" autocomplete="off"><div class="head"><div class="logo">'+EYE+'</div><div><h1>Lehrperson</h1><div class="sub">Bitte gib den Lehrer-Code ein.</div></div></div>'+(msg?'<div class="err" role="alert">'+esc(msg)+'</div>':'')+'<label>Lehrer-Code<input type="text" class="code" id="gc" maxlength="12"></label><button class="btn" type="submit">Weiter</button><div class="small"><a href="'+esc(location.pathname)+'">Zur Schülerseite</a></div></form></div>';
