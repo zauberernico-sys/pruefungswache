@@ -137,7 +137,9 @@ app.innerHTML='<div class="center"><form class="card" id="f" autocomplete="off">
 '<label>Prüfungscode<input type="text" class="code" id="c" maxlength="8" value="'+esc(S.room)+'"'+(resume?' readonly':'')+'></label></div>'+
 '<div class="notice"><b>Diese Prüfung wird überwacht.</b><p>Die Prüfung läuft im Vollbild. Jeder Wechsel zu einem anderen Tab, Fenster oder Programm wird sofort an deine Lehrperson gemeldet, ebenso das Verlassen des Vollbilds.</p><p>Gemeldet werden nur dein Name, der Zeitpunkt und die Dauer. Dein Bildschirm wird nicht aufgezeichnet.</p></div>'+
 '<button class="btn" id="go" type="submit">'+(resume?'Prüfung fortsetzen':'Verstanden, Prüfung starten')+'</button>'+
-'<div class="small"><a href="?lehrer">Für Lehrpersonen</a></div></form></div>';
+'</form></div>';
+var lg=app.querySelector('.logo'),lc=0,lt=0;
+lg.addEventListener('click',function(){var n=Date.now();lc=(n-lt<700)?lc+1:1;lt=n;if(lc>=3)location.href=location.pathname+'?lehrer';});
 document.getElementById('f').addEventListener('submit',function(e){
 e.preventDefault();
 var n=document.getElementById('n').value.trim().replace(/\s+/g,' '),c=document.getElementById('c').value.trim().toUpperCase();
@@ -386,7 +388,21 @@ var csv='﻿'+rows.map(function(r){return r.map(function(c){return '"'+String(c)
 var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
 a.download='pruefungswache-'+T.room+'.csv';document.body.appendChild(a);a.click();a.remove();
 }
-if(T&&T.room)dashView();else setupView();
+var CODE_HASH='b534d8d15a4e96273cb663a3ec8d6742b99bb283ba3619e6b2e8d8a01cd6568b',OK='pw-teacher-ok';
+function enter(){if(T&&T.room)dashView();else setupView();}
+function gate(msg){
+app.innerHTML='<div class="center"><form class="card" id="g" autocomplete="off"><div class="head"><div class="logo">'+EYE+'</div><div><h1>Lehrperson</h1><div class="sub">Bitte gib den Lehrer-Code ein.</div></div></div>'+(msg?'<div class="err" role="alert">'+esc(msg)+'</div>':'')+'<label>Lehrer-Code<input type="text" class="code" id="gc" maxlength="12"></label><button class="btn" type="submit">Weiter</button><div class="small"><a href="'+esc(location.pathname)+'">Zur Schülerseite</a></div></form></div>';
+document.getElementById('gc').focus();
+document.getElementById('g').addEventListener('submit',function(e){
+e.preventDefault();
+var v=document.getElementById('gc').value.trim().toUpperCase();
+crypto.subtle.digest('SHA-256',new TextEncoder().encode('pruefwache:'+v)).then(function(buf){
+var h=Array.prototype.map.call(new Uint8Array(buf),function(b){return ('0'+b.toString(16)).slice(-2);}).join('');
+if(h===CODE_HASH){save(localStorage,OK,CODE_HASH);enter();}else gate('Dieser Code stimmt nicht.');
+},function(){gate('Der Code konnte nicht geprüft werden.');});
+});
+}
+if(load(localStorage,OK)===CODE_HASH)enter();else gate();
 }
 })();
 </script>
