@@ -123,7 +123,12 @@ if(Q.has('lehrer'))teacher();else student();
 function student(){
 var KEY='pw-student';
 var S=load(sessionStorage,KEY);
-if(!S||!S.id)S={id:rid(10),name:'',room:(Q.get('code')||'').toUpperCase().slice(0,8),phase:'login',leaves:0,fsExits:0,awayMs:0,events:[]};
+var QC=(Q.get('code')||'').toUpperCase().slice(0,8);
+function fresh(name){return {id:rid(10),name:name||'',room:QC,phase:'login',leaves:0,fsExits:0,awayMs:0,events:[]};}
+/* Alte Sitzung nicht weiterführen, wenn sie abgeschlossen ist oder ein anderer Prüfungscode in der Adresse steht */
+if(!S||!S.id||S.phase==='done'||S.phase==='ended'||(QC&&S.room&&QC!==S.room))S=fresh(S&&S.name);
+if(S.phase==='login'&&QC)S.room=QC;
+save(sessionStorage,KEY,S);
 var R={away:false,awaySince:0,unfocused:0,fsOut:false,online:false,monitoring:false,fsOk:true,connecting:false,running:true,peer:null,conn:null,timer:null,el:{}};
 function persist(){save(sessionStorage,KEY,S);}
 function ev(k,d){S.events.push({t:Date.now(),k:k,d:d==null?null:d});if(S.events.length>300)S.events.shift();}
@@ -159,8 +164,9 @@ dial();
 clearTimeout(R.cto);
 R.cto=setTimeout(function(){if(R.connecting)fail('Keine Verbindung zur Lehrperson. Prüfe den Code und das WLAN und versuche es nochmals.');},15000);
 }
-function fail(msg){
+function fail(msg,gone){
 R.connecting=false;clearTimeout(R.cto);
+if(gone){S=fresh(S.name);S.room='';persist();}
 if(R.peer){try{R.peer.destroy();}catch(e){}}R.peer=null;R.conn=null;R.online=false;
 exitFs();loginView(msg);
 }
@@ -173,7 +179,7 @@ return;
 var p=R.peer=new Peer(PEER_OPTS);
 p.on('open',link);
 p.on('error',function(e){
-if(e&&e.type==='peer-unavailable'&&R.connecting)fail('Dieser Code wurde nicht gefunden. Hat deine Lehrperson die Prüfung schon geöffnet?');
+if(e&&e.type==='peer-unavailable'&&R.connecting)fail('Dieser Code wurde nicht gefunden. Hat deine Lehrperson die Prüfung schon geöffnet?',S.phase==='exam');
 });
 }
 function link(){
@@ -188,7 +194,7 @@ function onMsg(m){
 if(!m||typeof m!=='object')return;
 if(m.t==='config'){
 if(R.connecting){
-if(m.running===false)return fail('Diese Prüfung ist bereits beendet.');
+if(m.running===false)return fail('Diese Prüfung ist bereits beendet.',true);
 var u=widgetUrl(m.widget);
 if(!u)return fail('Die Prüfung ist noch nicht eingerichtet.');
 R.connecting=false;clearTimeout(R.cto);examView(u);
@@ -221,7 +227,7 @@ document.addEventListener('fullscreenchange',tick);
 window.addEventListener('blur',function(){setTimeout(tick,60);});
 window.addEventListener('focus',tick);
 setInterval(tick,300);
-setInterval(function(){if(S.phase==='exam'||S.phase==='done'){if(!R.online)dial();push();}},2000);
+setInterval(function(){if(S.phase==='exam'||S.phase==='done'||S.phase==='ended'){if(!R.online)dial();push();}},2000);
 window.addEventListener('beforeunload',function(e){if(S.phase==='exam'&&R.running){e.preventDefault();e.returnValue='';}});
 push();paint();
 }
@@ -250,12 +256,13 @@ if(!R.el.net)return;
 R.el.net.textContent=R.online?'Verbunden':'Keine Verbindung';
 R.el.net.className='net'+(R.online?'':' bad');
 var on=R.running&&S.phase==='exam';
+var fb=document.getElementById('fin');if(fb&&S.phase==='ended')fb.remove();
 R.el.dot.className='dot'+(on?'':' off');
 R.el.st.textContent=on?'Überwachung aktiv':'Überwachung beendet';
 }
 function stopMonitoring(){
 if(!R.running)return;
-R.running=false;R.away=false;R.fsOut=false;
+R.running=false;R.away=false;R.fsOut=false;S.phase='ended';persist();
 if(R.el.fso){R.el.fso.hidden=true;R.el.ban.hidden=true;}
 paint();
 }
