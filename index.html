@@ -122,15 +122,15 @@ if(Q.has('lehrer'))teacher();else student();
 /* ================= Schülerseite ================= */
 function student(){
 var KEY='pw-student';
-var S=load(sessionStorage,KEY);
+var S=load(localStorage,KEY);
 var QC=(Q.get('code')||'').toUpperCase().slice(0,8);
 function fresh(name){return {id:rid(10),name:name||'',room:QC,phase:'login',leaves:0,fsExits:0,awayMs:0,events:[]};}
 /* Alte Sitzung nicht weiterführen, wenn sie abgeschlossen ist oder ein anderer Prüfungscode in der Adresse steht */
 if(!S||!S.id||S.phase==='done'||S.phase==='ended'||(QC&&S.room&&QC!==S.room))S=fresh(S&&S.name);
 if(S.phase==='login'&&QC)S.room=QC;
-save(sessionStorage,KEY,S);
+save(localStorage,KEY,S);
 var R={away:false,awaySince:0,unfocused:0,fsOut:false,online:false,monitoring:false,fsOk:true,connecting:false,running:true,peer:null,conn:null,timer:null,el:{}};
-function persist(){save(sessionStorage,KEY,S);}
+function persist(){save(localStorage,KEY,S);}
 function ev(k,d){S.events.push({t:Date.now(),k:k,d:d==null?null:d});if(S.events.length>300)S.events.shift();}
 
 function loginView(msg){
@@ -207,7 +207,17 @@ return {id:S.id,name:S.name,phase:S.phase,away:R.away,awaySince:R.away?R.awaySin
 function push(){if(R.conn&&R.conn.open){try{R.conn.send({t:'state',s:state()});}catch(e){}}}
 
 function examView(url){
-if(R.resume)ev('reload');else ev('start');
+if(R.resume){
+/* Beim Schliessen oder Neuladen entsteht ein offener Weg-Eintrag: als Artefakt entfernen oder mit Dauer abschliessen */
+var un=S.unloadAt||0,last=S.events[S.events.length-1];
+if(last&&last.k==='weg'&&last.d==null){
+if(un&&last.t>=un-1500){S.events.pop();S.leaves=Math.max(0,S.leaves-1);}
+else{last.d=Math.max(0,(un||Date.now())-last.t);S.awayMs+=last.d;}
+}
+var gap=un?Date.now()-un:0;
+if(gap>5000){S.leaves++;S.awayMs+=gap;ev('reload',gap);}else ev('reload');
+S.unloadAt=0;
+}else ev('start');
 S.phase='exam';persist();
 app.innerHTML='<div class="exam"><div class="bar"><div class="l">'+EYE+'<span class="dot" id="dot"></span><span class="state" id="st">Überwachung aktiv</span></div>'+
 '<div class="r"><span class="who">'+esc(S.name)+'</span><span class="net" id="net" role="status"></span><button type="button" id="fin">Ich habe abgegeben</button></div></div>'+
@@ -228,11 +238,13 @@ window.addEventListener('blur',function(){setTimeout(tick,60);});
 window.addEventListener('focus',tick);
 setInterval(tick,300);
 setInterval(function(){if(S.phase==='exam'||S.phase==='done'||S.phase==='ended'){if(!R.online)dial();push();}},2000);
+window.addEventListener('pagehide',function(){R.unloading=true;if(S.phase==='exam'){S.unloadAt=Date.now();persist();}});
+window.addEventListener('pageshow',function(){R.unloading=false;});
 window.addEventListener('beforeunload',function(e){if(S.phase==='exam'&&R.running){e.preventDefault();e.returnValue='';}});
 push();paint();
 }
 function tick(){
-if(!R.monitoring||S.phase!=='exam'||!R.running)return;
+if(!R.monitoring||R.unloading||S.phase!=='exam'||!R.running)return;
 var now=Date.now(),hidden=document.visibilityState!=='visible',focused=!hidden&&document.hasFocus();
 if(focused)R.unfocused=0;else if(!R.unfocused)R.unfocused=now;
 /* Tabwechsel zählt sofort; reiner Fokusverlust erst nach 0,6 s, damit das Klicken in die Prüfung keinen Fehlalarm gibt */
@@ -341,7 +353,7 @@ var TXT={start:'hat gestartet',reload:'hat die Seite neu geladen',vollbild:'hat 
 function allEvents(){
 var out=[];
 Object.keys(T.students).forEach(function(id){var s=T.students[id];s.events.forEach(function(e){
-var txt=e.k==='weg'?(e.d==null?'hat die Prüfung verlassen':'war '+dur(e.d)+' weg'):(TXT[e.k]||e.k);
+var txt=e.k==='weg'?(e.d==null?'hat die Prüfung verlassen':'war '+dur(e.d)+' weg'):(e.k==='reload'&&e.d?'hatte das Fenster '+dur(e.d)+' geschlossen':(TXT[e.k]||e.k));
 out.push({t:e.t+s.skew,name:s.name,k:e.k,d:e.d,txt:txt});
 });});
 out.sort(function(a,b){return b.t-a.t;});
