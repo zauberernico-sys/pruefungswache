@@ -140,7 +140,7 @@ app.innerHTML='<div class="center"><form class="card" id="f" autocomplete="off">
 (msg?'<div class="err" role="alert">'+esc(msg)+'</div>':'')+
 '<div class="fields"><label>Vorname und Name<input type="text" id="n" maxlength="40" value="'+esc(S.name)+'"'+(resume?' readonly':'')+'></label>'+
 '<label>Prüfungscode<input type="text" class="code" id="c" maxlength="8" value="'+esc(S.room)+'"'+(resume?' readonly':'')+'></label></div>'+
-'<div class="notice"><b>Diese Prüfung wird überwacht.</b><p>Die Prüfung läuft im Vollbild. Jeder Wechsel zu einem anderen Tab, Fenster oder Programm wird sofort an deine Lehrperson gemeldet, ebenso das Verlassen des Vollbilds.</p><p>Gemeldet werden nur dein Name, der Zeitpunkt und die Dauer. Dein Bildschirm wird nicht aufgezeichnet.</p></div>'+
+'<div class="notice"><b>Diese Prüfung wird überwacht.</b><p>Die Prüfung läuft im Vollbild. Jeder Wechsel zu einem anderen Tab, Fenster oder Programm wird sofort an deine Lehrperson gemeldet, ebenso das Verlassen des Vollbilds.</p></div>'+
 '<button class="btn" id="go" type="submit">'+(resume?'Prüfung fortsetzen':'Verstanden, Prüfung starten')+'</button>'+
 '</form></div>';
 var lg=app.querySelector('.logo'),lc=0,lt=0;
